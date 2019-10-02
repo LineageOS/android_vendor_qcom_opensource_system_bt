@@ -3929,7 +3929,7 @@ void bta_av_open_at_inc(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
 
 void offload_vendor_callback(tBTM_VSC_CMPL *param)
 {
-  unsigned char status = 0;
+  tBTA_AV value{0};
   unsigned char sub_opcode = 0;
   APPL_TRACE_DEBUG("%s: param_len = %d subopcode = %d status = %d", __func__,
                      param->param_len, param->p_param_buf[1], param->p_param_buf[0]);
@@ -3938,10 +3938,10 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
             offload_start.p_scb->vendor_start);
   if (param->param_len)
   {
-    status = param->p_param_buf[0];
+    value.status = param->p_param_buf[0];
   }
   sub_opcode =  param->p_param_buf[1];
-  if (status == 0)
+  if (value.status == 0) {
   {
     //sub_opcode =  param->p_param_buf[1];
     switch(sub_opcode)
@@ -3992,7 +3992,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
           else {
             APPL_TRACE_ERROR("Dont send start, stream suspended update fail to Audio");
             status = 1;//FAIL
-            (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, (tBTA_AV*)&status);
+            (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &value);
             break;
           }
 #if (BTA_AV_CO_CP_SCMS_T == TRUE)
@@ -4003,7 +4003,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
             if (last_sent_vsc_cmd == VS_QHCI_START_A2DP_MEDIA) {
                    APPL_TRACE_DEBUG("%s: START VSC already exchanged.", __func__);
                    status = 0;
-                   (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, (tBTA_AV*)&status);
+                   (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &value);
                    return;
                }
                last_sent_vsc_cmd = VS_QHCI_START_A2DP_MEDIA;
@@ -4015,7 +4015,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
           if (last_sent_vsc_cmd == VS_QHCI_START_A2DP_MEDIA) {
             APPL_TRACE_DEBUG("%s: START VSC already exchanged.", __func__);
             status = 0;
-            (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, (tBTA_AV*)&status);
+            (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &value);
             return;
           }
           last_sent_vsc_cmd = VS_QHCI_START_A2DP_MEDIA;
@@ -4034,7 +4034,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
           if (last_sent_vsc_cmd == VS_QHCI_START_A2DP_MEDIA) {
             APPL_TRACE_DEBUG("%s: START VSC already exchanged.", __func__);
             status = 0;
-            (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, (tBTA_AV*)&status);
+            (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &value);
             return;
           }
           last_sent_vsc_cmd = VS_QHCI_START_A2DP_MEDIA;
@@ -4046,11 +4046,11 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
         }
       case VS_QHCI_START_A2DP_MEDIA:
           APPL_TRACE_DEBUG("%s: Multi VS_QHCI_START_A2DP_MEDIA successful", __func__);
-          (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, (tBTA_AV*)&status);
+          (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &value);
           break;
       case VS_QHCI_STOP_A2DP_MEDIA:
           APPL_TRACE_DEBUG("%s: VS_QHCI_STOP_A2DP_MEDIA successful", __func__);
-          (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_STOP_RSP_EVT, (tBTA_AV*)&status);
+          (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_STOP_RSP_EVT, &value);
           if (btif_a2dp_src_vsc.start_reset) {
             bta_av_offload_req(offload_start.p_scb, NULL);
             btif_a2dp_src_vsc.start_reset = false;
@@ -4102,7 +4102,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
         bta_av_data.offload_rsp = offload_rsp;
         (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &bta_av_data);
       } else {
-        (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, (tBTA_AV*)&status);
+        (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &value);
       }
     }
   }
