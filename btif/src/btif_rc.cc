@@ -697,7 +697,7 @@ void handle_rc_features(btif_rc_device_cb_t* p_dev) {
                    avdtp_addr.ToString().c_str(), rc_addr.ToString().c_str());
 
   if (interop_match_addr_or_name(INTEROP_DISABLE_ABSOLUTE_VOLUME, &rc_addr) ||
-      absolute_volume_disabled() || (avdtp_addr != rc_addr) || (ver < AVRC_REV_1_4)) {
+      absolute_volume_disabled() || (avdtp_addr != rc_addr)) {
     p_dev->rc_features &= ~BTA_AV_FEAT_ADV_CTRL;
   }
 
