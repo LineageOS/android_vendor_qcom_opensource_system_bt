@@ -678,19 +678,27 @@ void handle_rc_features(btif_rc_device_cb_t* p_dev) {
 
   btrc_remote_features_t rc_features = BTRC_FEAT_NONE;
   RawAddress avdtp_addr = btif_av_get_addr(p_dev->rc_addr);
+<<<<<<< HEAD   (f6e091 Merge 96d493d22fbffa9abb516ce5c0f6486ae6445569 on remote bra)
   uint16_t ver = 0;
   bool is_entry_present = btif_config_get_uint16(rc_addr.ToString().c_str(),
                                                  AV_REM_CTRL_VERSION_CONFIG_KEY, (uint16_t*) &ver);
   ver = sdp_get_stored_avrc_tg_version(p_dev->rc_addr);
   ver = (AVRCP_VERSION_BIT_MASK & ver);
 
+=======
+>>>>>>> CHANGE (af7dfe AVRCP: Ignore AVRCP version when registering absolute volume)
   BTIF_TRACE_DEBUG("%s: AVDTP Address: %s AVCTP address: %s", __func__,
                    avdtp_addr.ToString().c_str(), rc_addr.ToString().c_str());
   BTIF_TRACE_DEBUG("%s:version entry present: %d version: %d", __func__, is_entry_present, ver);
 
+<<<<<<< HEAD   (f6e091 Merge 96d493d22fbffa9abb516ce5c0f6486ae6445569 on remote bra)
   if (interop_match_addr_or_name(INTEROP_DISABLE_ABSOLUTE_VOLUME, &rc_addr)
       || absolute_volume_disabled() || (avdtp_addr != rc_addr) ||
       (is_entry_present && (ver < AVRC_REV_1_4))) {
+=======
+  if (interop_match_addr_or_name(INTEROP_DISABLE_ABSOLUTE_VOLUME, &rc_addr) ||
+      absolute_volume_disabled() || (avdtp_addr != rc_addr)) {
+>>>>>>> CHANGE (af7dfe AVRCP: Ignore AVRCP version when registering absolute volume)
     p_dev->rc_features &= ~BTA_AV_FEAT_ADV_CTRL;
   }
 
