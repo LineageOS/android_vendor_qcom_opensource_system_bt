@@ -1254,8 +1254,10 @@ void bta_ag_at_hfp_cback(tBTA_AG_SCB* p_scb, uint16_t cmd, uint8_t arg_type,
 
       tBTA_AG_FEAT features = p_scb->features & BTA_AG_BSRF_FEAT_SPEC;
 
-      if ((p_scb->peer_version < HFP_VERSION_1_7) &&
-           (!(p_scb->peer_features & BTA_AG_PEER_FEAT_HF_IND))) {
+      /* peer is HFP 1.1 if it initiated connection before AG could get remote's
+       * HFP version */
+      if (p_scb->peer_version < HFP_VERSION_1_7 &&
+            p_scb->peer_version != HFP_VERSION_1_1) {
         /* For PTS keep flags as is */
         if (property_get("vendor.bt.pts.certification", value, "false") &&
             strcmp(value, "true") != 0)
@@ -1474,7 +1476,14 @@ void bta_ag_at_hfp_cback(tBTA_AG_SCB* p_scb, uint16_t cmd, uint8_t arg_type,
     }
     case BTA_AG_LOCAL_EVT_BCC: {
         if (
-        !bta_ag_sco_is_active_device(p_scb->peer_addr)) {
+          !bta_ag_is_call_present(&p_scb->peer_addr)) {
+          LOG(WARNING) << __func__ << ": AT+BCC rejected as " << p_scb->peer_addr
+                       << " does not have call, call setup";
+          bta_ag_send_error(p_scb, BTA_AG_ERR_OP_NOT_ALLOWED);
+          break;
+        }
+        if (
+          !bta_ag_sco_is_active_device(p_scb->peer_addr)) {
           LOG(WARNING) << __func__ << ": AT+BCC rejected as " << p_scb->peer_addr
                        << " is not the active device";
           bta_ag_send_error(p_scb, BTA_AG_ERR_OP_NOT_ALLOWED);
@@ -2093,4 +2102,37 @@ void bta_ag_send_ring(tBTA_AG_SCB* p_scb, UNUSED_ATTR tBTA_AG_DATA* p_data) {
 #if (TWS_AG_ENABLED == TRUE)
   }
 #endif
+}
+
+bool bta_ag_is_call_present(const RawAddress* peer_addr)
+{
+  uint16_t handle;
+  tBTA_AG_SCB* p_scb;
+
+  if (peer_addr == NULL)
+  {
+    APPL_TRACE_WARNING("%s, peer address is null", __func__);
+    return 0;
+  }
+
+  handle = bta_ag_idx_by_bdaddr(peer_addr);
+  p_scb = bta_ag_scb_by_idx(handle);
+
+  if (p_scb == NULL)
+  {
+    APPL_TRACE_WARNING("%s, p_scb is null for peer dev %s", __func__,
+                        (*peer_addr).ToString().c_str());
+    return 0;
+  }
+
+  if (p_scb->call_ind || p_scb->callsetup_ind || p_scb->callheld_ind)
+  {
+    APPL_TRACE_IMP("%s, call is present for peer dev %s", __func__,
+                    p_scb->peer_addr.ToString().c_str());
+    return 1;
+  }
+
+  APPL_TRACE_IMP("%s, call is not present for peer dev %s", __func__,
+                    p_scb->peer_addr.ToString().c_str());
+  return 0;
 }

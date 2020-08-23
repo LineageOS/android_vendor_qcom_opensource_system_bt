@@ -85,6 +85,9 @@
   6 /* get capability failed due to no SEP availale on the peer  */
 #define BTA_AV_FAIL_UNSUPPORTED 7 /* Offload Start Rsp handling in open state */
 #define BTA_AV_SUCCESS_BR_HANDOFF 8 /* successful browse handoff operation */
+#define BTA_AV_FAIL_RECONFIG \
+  9  /* Fake reconfig has been failed, to retry reconfig one more time after
+      * start VSC exchanged */
 
 typedef uint8_t tBTA_AV_STATUS;
 
@@ -489,6 +492,7 @@ typedef struct {
 typedef struct {
   tBTA_AV_HNDL hndl;
   tBTA_AV_STATUS status;
+  uint8_t stream_start;
 } tBTA_AV_OFFLOAD_RSP;
 
 /* union of data associated with AV callback */

@@ -494,14 +494,17 @@ static bool bta_av_next_getcap(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
       p_scb->sep_info_idx = i;
 
       /* we got a stream; get its capabilities */
-      if (p_scb->p_cap == NULL)
+      if (p_scb->p_cap == NULL) {
         p_scb->p_cap = (tAVDT_CFG*)osi_malloc(sizeof(tAVDT_CFG));
+      }
+
       if ((p_scb->avdt_version >= AVDT_VERSION_SYNC) &&
           (A2DP_GetAvdtpVersion() >= AVDT_VERSION_SYNC)) {
         p_req = AVDT_GetAllCapReq;
       } else {
         p_req = AVDT_GetCapReq;
       }
+
       if ((*p_req)(p_scb->peer_addr,
                      p_scb->sep_info[i].seid,
                      p_scb->p_cap, bta_av_dt_cback[p_scb->hdi]) == AVDT_SUCCESS) {
@@ -1274,8 +1277,9 @@ void bta_av_cleanup(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
   tBTA_AV_CONN_CHG msg;
   uint8_t role = BTA_AV_ROLE_AD_INT;
 
-  APPL_TRACE_DEBUG("%s: for handle: 0x%x, peer_add: %s",
-           __func__, p_scb->hndl, p_scb->peer_addr.ToString().c_str());
+  APPL_TRACE_DEBUG("%s: handle: 0x%x, peer_add: %s, deregistring: %d, tws_device: %d",
+     __func__, p_scb->hndl, p_scb->peer_addr.ToString().c_str(), p_scb->deregistring,
+     p_scb->tws_device);
   last_sent_vsc_cmd = 0;
 
   /* free any buffers */
@@ -2489,15 +2493,13 @@ void bta_av_setconfig_rej(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
  * Returns          void
  *
  ******************************************************************************/
-void bta_av_discover_req(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
+void bta_av_discover_req(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
   /* send avdtp discover request */
-
-    /* send avdtp discover request */
-    if (AVDT_DiscoverReq(p_scb->peer_addr, p_scb->sep_info, BTA_AV_NUM_SEPS, bta_av_dt_cback[p_scb->hdi]) != AVDT_SUCCESS)
-    {
-        APPL_TRACE_ERROR("bta_av_discover_req command could not be sent because of resource constraint");
-        bta_av_ssm_execute(p_scb, BTA_AV_STR_DISC_FAIL_EVT, p_data);
-    }
+  if (AVDT_DiscoverReq(p_scb->peer_addr, p_scb->sep_info,
+      BTA_AV_NUM_SEPS, bta_av_dt_cback[p_scb->hdi]) != AVDT_SUCCESS) {
+    APPL_TRACE_ERROR("bta_av_discover_req command couldn't be sent because of resource constraint");
+    bta_av_ssm_execute(p_scb, BTA_AV_STR_DISC_FAIL_EVT, p_data);
+  }
 }
 
 /*******************************************************************************
@@ -2701,8 +2703,9 @@ void bta_av_reconfig(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
   tBTA_AV_RECONFIG evt;
   tBTA_AV_API_RCFG* p_rcfg = &p_data->api_reconfig;
 
-  APPL_TRACE_DEBUG("%s: r:%d, s:%d idx: %d (o:%d)", __func__, p_scb->recfg_sup,
-                   p_scb->suspend_sup, p_scb->rcfg_idx, p_scb->sep_info_idx);
+  APPL_TRACE_DEBUG("%s: r:%d, s:%d idx: %d (o:%d), p_scb->role: x%x,"
+         " p_scb->started: %d", __func__, p_scb->recfg_sup, p_scb->suspend_sup,
+         p_scb->rcfg_idx, p_scb->sep_info_idx, p_scb->role, p_scb->started);
 
   p_scb->num_recfg = 0;
   /* store the new configuration in control block */
@@ -2713,12 +2716,36 @@ void bta_av_reconfig(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
     evt.status = BTA_AV_FAIL_RESOURCES;
     evt.chnl   = p_scb->chnl;
     evt.hndl   = p_scb->hndl;
+    APPL_TRACE_DEBUG("%s: sending reconfig fail with status: %d", __func__,
+                                           evt.status);
     (*bta_av_cb.p_cback)(BTA_AV_RECONFIG_EVT, (tBTA_AV *)&evt);
 
     /* this event is not possible in this state.
      * use it to bring the SSM back to open state
      */
     bta_av_ssm_execute(p_scb, BTA_AV_SDP_DISC_OK_EVT, NULL);
+    return;
+  }
+
+  /* When Reconfig from App followed by MM start back to back, then fake reconfig
+   * fail instead sending reconfig to remote, to avoid BAD_STATE error due to btif
+   * AV SM has been moved to started handler. So, from below code host will retry
+   * reconfig in proper way as supend->reconfig->start.
+   */
+  if ((p_scb->role == BTA_AV_ROLE_START_INT) &&
+        (p_scb->started == false)) {
+    /* report failure */
+    evt.status = BTA_AV_FAIL_RECONFIG;
+    evt.chnl   = p_scb->chnl;
+    evt.hndl   = p_scb->hndl;
+    APPL_TRACE_DEBUG("%s: sending reconfig fail with status: %d", __func__,
+                                           evt.status);
+    (*bta_av_cb.p_cback)(BTA_AV_RECONFIG_EVT, (tBTA_AV *)&evt);
+
+    /* Use below event to bring the SSM back to open state if SSM is in reconfig state.
+     * When reconfig fail happens and if is otherthan reconfig SSM, move the SSM to
+     * same state*/
+    bta_av_ssm_execute(p_scb, BTA_AV_RECONFIG_FAIL_EVT, NULL);
     return;
   }
   btav_a2dp_codec_index_t curr_codec_index = A2DP_SourceCodecIndex(p_scb->cfg.codec_info);
@@ -4041,6 +4068,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
             offload_rsp.hndl = offload_start.p_scb->hndl;
           }
           offload_rsp.status = status;
+          offload_rsp.stream_start = offload_start.stream_start;
           //bta_av_data.start.hndl = offload_start.p_scb->hndl;
           bta_av_data.offload_rsp = offload_rsp;
           offload_start.p_scb->vendor_start = true;
@@ -4070,6 +4098,7 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
           offload_rsp.hndl = offload_start.p_scb->hndl;
         }
         offload_rsp.status = status;
+        offload_rsp.stream_start = offload_start.stream_start;
         bta_av_data.offload_rsp = offload_rsp;
         (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &bta_av_data);
       } else {
@@ -4078,23 +4107,6 @@ void offload_vendor_callback(tBTM_VSC_CMPL *param)
     }
   }
 }
-
-/* static uint8_t bta_av_vendor_offload_convert_sample_rate(uint16_t sample_rate) {
-  uint8_t rate;
-  switch (sample_rate) {
-    case 44100:
-      rate = 0x1 << 0;
-      break;
-    case 48000:
-      rate = 0x1 << 1;
-      break;
-    default:
-      APPL_TRACE_ERROR("Invalid sample rate, going with default 44.1");
-      rate = 0x1 << 0;
-      break;
-  }
-  return rate;
-} */
 
 static void bta_av_vendor_offload_select_codec(tBTA_AV_SCB* p_scb)
 {
@@ -4696,21 +4708,17 @@ void bta_av_fake_suspend_rsp(const RawAddress &remote_bdaddr) {
  *
  ******************************************************************************/
 void bta_av_disc_fail_as_acp(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
-  if (p_scb->cache_setconfig) {
-    APPL_TRACE_DEBUG("%s: Need to reuse the cached set_config, to do get_caps"
-                      " for the same SEP", __func__);
-    memcpy(p_data, p_scb->cache_setconfig, sizeof(tBTA_AV_CI_SETCONFIG));
-    memset(p_scb->cache_setconfig, 0, sizeof(tBTA_AV_CI_SETCONFIG));
-    osi_free(p_scb->cache_setconfig);
-    p_scb->cache_setconfig = NULL;
+  if (p_scb->cache_setconfig == NULL) {
+    APPL_TRACE_DEBUG("%s: p_scb->cache_setconfig is NULL", __func__);
+    return;
   }
 
-  uint8_t num = p_data->ci_setconfig.num_seid + 1;
-  uint8_t avdt_handle = p_data->ci_setconfig.avdt_handle;
-  uint8_t* p_seid = p_data->ci_setconfig.p_seid;
+  uint8_t num = p_scb->cache_setconfig->num_seid + 1;
+  uint8_t avdt_handle = p_scb->cache_setconfig->avdt_handle;
+  uint8_t* p_seid = p_scb->cache_setconfig->p_seid;
   uint8_t local_sep;
   APPL_TRACE_DEBUG("%s: num_seid: %d, p_seid: %d", __func__,
-                                p_data->ci_setconfig.num_seid, *p_seid);
+                                p_scb->cache_setconfig->num_seid, *p_seid);
 
   /* we like this codec_type. find the sep_idx */
   local_sep = bta_av_get_scb_sep_type(p_scb, avdt_handle);
@@ -4730,6 +4738,11 @@ void bta_av_disc_fail_as_acp(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
   //so, num_seps is '1' and sep_info_idx would be '0'
   p_scb->num_seps = 1;
   p_scb->sep_info_idx = 0;
+
+  /* Free up cached config memory */
+  memset(p_scb->cache_setconfig, 0, sizeof(tBTA_AV_CI_SETCONFIG));
+  osi_free(p_scb->cache_setconfig);
+  p_scb->cache_setconfig = NULL;
 
   /* only in case of local sep as SRC we need to look for other SEPs, In case
    * of SINK we don't */

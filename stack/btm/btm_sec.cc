@@ -1200,6 +1200,10 @@ tBTM_STATUS BTM_SecBondCancel(const RawAddress& bd_addr) {
       BTM_TRACE_DEBUG("Cancel LE pairing");
       if (SMP_PairCancel(bd_addr)) {
         return BTM_CMD_STARTED;
+      } else {
+        BTM_TRACE_DEBUG("LE pairing not in progress, reset pairing state");
+        p_dev_rec->security_required = BTM_SEC_NONE;
+        btm_sec_change_pairing_state(BTM_PAIR_STATE_IDLE);
       }
     }
     return BTM_WRONG_MODE;
@@ -4645,8 +4649,10 @@ void btm_sec_connected(const RawAddress& bda, uint16_t handle, uint8_t status,
     /* Set the packet types to the default allowed by the device */
     btm_set_packet_types(p_acl_cb, btm_cb.btm_acl_pkt_types_supported);
 
-    if (btm_cb.btm_def_link_policy)
-      BTM_SetLinkPolicy(p_acl_cb->remote_addr, &btm_cb.btm_def_link_policy);
+    if (btm_cb.btm_def_link_policy) {
+      uint16_t btm_def_link_policy_local = btm_cb.btm_def_link_policy;
+      BTM_SetLinkPolicy(p_acl_cb->remote_addr, &btm_def_link_policy_local);
+    }
 #endif
   }
   btm_acl_created(bda, p_dev_rec->dev_class, p_dev_rec->sec_bd_name, handle,
@@ -5045,6 +5051,7 @@ static void btm_sec_pairing_timeout(UNUSED_ATTR void* data) {
                                : BTM_AUTH_AP_YES;
   BD_NAME name;
 
+  RawAddress p_bda = p_cb->pairing_bda;
   p_dev_rec = btm_find_dev(p_cb->pairing_bda);
   tL2C_LCB *p_lcb = l2cu_find_lcb_by_bd_addr (p_cb->pairing_bda, BT_TRANSPORT_BR_EDR);
 
@@ -5067,7 +5074,7 @@ static void btm_sec_pairing_timeout(UNUSED_ATTR void* data) {
       if (btm_cb.api.p_auth_complete_callback) {
         if (p_dev_rec == NULL) {
           name[0] = 0;
-          (*btm_cb.api.p_auth_complete_callback)(p_cb->pairing_bda, NULL, name,
+          (*btm_cb.api.p_auth_complete_callback)(p_bda, NULL, name,
                                                  HCI_ERR_CONNECTION_TOUT);
         } else
           (*btm_cb.api.p_auth_complete_callback)(
@@ -5136,7 +5143,7 @@ static void btm_sec_pairing_timeout(UNUSED_ATTR void* data) {
       if (btm_cb.api.p_auth_complete_callback) {
         if (p_dev_rec == NULL) {
           name[0] = 0;
-          (*btm_cb.api.p_auth_complete_callback)(p_cb->pairing_bda, NULL, name,
+          (*btm_cb.api.p_auth_complete_callback)(p_bda, NULL, name,
                                                  HCI_ERR_CONNECTION_TOUT);
         } else
           (*btm_cb.api.p_auth_complete_callback)(
@@ -5151,7 +5158,7 @@ static void btm_sec_pairing_timeout(UNUSED_ATTR void* data) {
       btm_sec_change_pairing_state(BTM_PAIR_STATE_IDLE);
       break;
   }
-  BTM_SecResetPairingFlag(p_cb->pairing_bda);
+  BTM_SecResetPairingFlag(p_bda);
 }
 
 /*******************************************************************************

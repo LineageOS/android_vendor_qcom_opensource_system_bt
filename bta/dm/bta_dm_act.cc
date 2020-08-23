@@ -577,7 +577,7 @@ void bta_dm_disable(UNUSED_ATTR tBTA_DM_MSG* p_data) {
   if (soc_type == BT_SOC_TYPE_SMD) {
     uint8_t param[5] = {0x10,0x02,0x00,0x00,0x01};
     BTM_VendorSpecificCommand(HCI_VS_HOST_LOG_OPCODE,5,param,NULL);
-  } else if (soc_type == BT_SOC_TYPE_CHEROKEE || soc_type == BT_SOC_TYPE_HASTINGS) {
+  } else if (soc_type >= BT_SOC_TYPE_CHEROKEE) {
     uint8_t param[2] = {0x14, 0x00};
     BTM_VendorSpecificCommand(HCI_VS_HOST_LOG_OPCODE, 2, param, NULL);
   }
@@ -2377,9 +2377,7 @@ static void bta_dm_find_services(const RawAddress& bd_addr) {
 
       } else {
         if (uuid == Uuid::From16Bit(UUID_PROTOCOL_L2CAP)) {
-          bool feature = profile_feature_fetch(PBAP_ID, PBAP_0102_SUPPORT);
-          LOG_DEBUG(LOG_TAG, " is_pbap_adv_enabled : %d", feature);
-          if (feature) {
+          if (sdpu_is_pbap_0102_enabled()) {
             LOG_DEBUG(LOG_TAG, "%s SDP search for PBAP Client ", __func__);
             BTA_SdpSearch(bd_addr, Uuid::From16Bit(UUID_SERVCLASS_PBAP_PCE));
           }

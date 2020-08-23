@@ -269,9 +269,9 @@ static void bta_ag_sco_disc_cback(uint16_t sco_idx) {
        )) {
       /* Bypass vendor specific and voice settings if enhanced eSCO supported */
 
-    if (!(controller_get_interface()
-              ->supports_enhanced_setup_synchronous_connection() &&
-          (soc_type == BT_SOC_TYPE_CHEROKEE || soc_type == BT_SOC_TYPE_HASTINGS))) {
+    if (!controller_get_interface()
+              ->supports_enhanced_setup_synchronous_connection() ||
+          soc_type == BT_SOC_TYPE_SMD || soc_type == BT_SOC_TYPE_ROME) {
 #if (BLUETOOTH_QTI_SW == FALSE) /* This change is not needed.*/
         BTM_WriteVoiceSettings(BTM_VOICE_SETTING_CVSD);
 #endif
@@ -279,7 +279,8 @@ static void bta_ag_sco_disc_cback(uint16_t sco_idx) {
 
       /* If SCO open was initiated by AG and failed for mSBC T2, try mSBC T1
        * 'Safe setting' first. If T1 also fails, try CVSD */
-      if (bta_ag_sco_is_opening(bta_ag_cb.sco.p_curr_scb)) {
+      if (bta_ag_cb.sco.p_curr_scb != NULL &&
+          bta_ag_sco_is_opening(bta_ag_cb.sco.p_curr_scb)) {
         bta_ag_cb.sco.p_curr_scb->state = BTA_AG_SCO_CODEC_ST;
 #if (BLUETOOTH_QTI_SW == FALSE) /* This change is not needed.*/
         if (bta_ag_cb.sco.p_curr_scb->codec_msbc_settings ==
@@ -806,9 +807,9 @@ static void bta_ag_create_pending_sco(tBTA_AG_SCB* p_scb, bool is_local) {
     }
 
     /* Bypass voice settings if enhanced SCO setup command is supported */
-    if (!(controller_get_interface()
-              ->supports_enhanced_setup_synchronous_connection() &&
-          (soc_type == BT_SOC_TYPE_CHEROKEE || soc_type == BT_SOC_TYPE_HASTINGS))) {
+    if (!controller_get_interface()
+              ->supports_enhanced_setup_synchronous_connection() ||
+          soc_type == BT_SOC_TYPE_SMD || soc_type == BT_SOC_TYPE_ROME) {
 #if (BLUETOOTH_QTI_SW == FALSE) /* These changes are not needed*/
       if (esco_codec == BTA_AG_CODEC_MSBC)
         BTM_WriteVoiceSettings(BTM_VOICE_SETTING_TRANS);
@@ -1392,8 +1393,8 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
           /* If last SCO instance then finish shutting down */
           if (!bta_ag_other_scb_open(p_scb)) {
             p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
-          } else /* Other instance is still listening */
-          {
+          } else if (p_scb == p_sco->p_curr_scb) {
+            /* If current instance shutdown, move to listening */
             p_sco->state = BTA_AG_SCO_LISTEN_ST;
           }
 #if (TWS_AG_ENABLED == TRUE)
@@ -1483,8 +1484,8 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
           /* If last SCO instance then finish shutting down */
           if (!bta_ag_other_scb_open(p_scb)) {
             p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
-          } else /* Other instance is still listening */
-          {
+          } else if (p_scb == p_sco->p_curr_scb) {
+            /* If current instance shutdown, move to listening */
             p_sco->state = BTA_AG_SCO_LISTEN_ST;
           }
 #if (TWS_AG_ENABLED == TRUE)
@@ -1624,7 +1625,7 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
           if (is_twsp_device(p_scb->peer_addr)) {
 
               if (p_scb == p_sco->p_curr_scb) {
-                  if (sco_disc_init) {
+                  if (sco_disc_init && p_scb->svc_conn) {
                       p_sco->state = BTA_AG_SCO_SHUTTING_ST;
                   } else {
                       if (p_scb == bta_ag_cb.main_sm_scb) {
@@ -1636,6 +1637,8 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                       } else {
                           p_sco->state = BTA_AG_SCO_LISTEN_ST;
                       }
+                      p_scb->sco_idx = BTM_INVALID_SCO_INDEX;
+                      p_sco->p_curr_scb = NULL;
                   }
               } else {
                   if (p_scb == bta_ag_cb.main_sm_scb) {
@@ -1655,15 +1658,13 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
                 } else {
                    p_sco->state = BTA_AG_SCO_LISTEN_ST;
                 }
+                p_scb->sco_idx = BTM_INVALID_SCO_INDEX;
+                p_sco->p_curr_scb = NULL;
             }
           }
 #if (TWS_AG_ENABLED == TRUE)
           }
 #endif
-
-            if (p_scb == p_sco->p_curr_scb) {
-              p_sco->p_curr_scb = NULL;
-            }
           }
           break;
 
@@ -1920,14 +1921,13 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
             bta_ag_create_sco(p_scb, false);
             p_sco->state = BTA_AG_SCO_LISTEN_ST;
           }
-
+#if (TWS_AG_ENABLED == TRUE)
+          }
+#endif
           if (p_scb == p_sco->p_curr_scb) {
             p_sco->p_curr_scb->sco_idx = BTM_INVALID_SCO_INDEX;
             p_sco->p_curr_scb = NULL;
           }
-#if (TWS_AG_ENABLED == TRUE)
-          }
-#endif
           break;
 
         case BTA_AG_SCO_LISTEN_E:
@@ -1980,14 +1980,13 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
           {
             p_sco->state = BTA_AG_SCO_LISTEN_ST;
           }
-
+#if (TWS_AG_ENABLED == TRUE)
+          }
+#endif
           if (p_scb == p_sco->p_curr_scb) {
             p_sco->p_curr_scb->sco_idx = BTM_INVALID_SCO_INDEX;
             p_sco->p_curr_scb = NULL;
           }
-#if (TWS_AG_ENABLED == TRUE)
-          }
-#endif
           break;
 
         default:

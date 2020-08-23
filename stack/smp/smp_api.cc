@@ -187,6 +187,7 @@ tSMP_STATUS SMP_Pair(const RawAddress& bd_addr) {
     if (!L2CA_ConnectFixedChnl(L2CAP_SMP_CID, bd_addr)) {
       tSMP_INT_DATA smp_int_data;
       smp_int_data.status = SMP_PAIR_INTERNAL_ERR;
+      p_cb->status = SMP_PAIR_INTERNAL_ERR;
       SMP_TRACE_ERROR("%s: L2C connect fixed channel failed.", __func__);
       smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &smp_int_data);
       return SMP_PAIR_INTERNAL_ERR;
@@ -231,6 +232,7 @@ tSMP_STATUS SMP_BR_PairWith(const RawAddress& bd_addr) {
     SMP_TRACE_ERROR("%s: L2C connect fixed channel failed.", __func__);
     tSMP_INT_DATA smp_int_data;
     smp_int_data.status = SMP_PAIR_INTERNAL_ERR;
+    p_cb->status = SMP_PAIR_INTERNAL_ERR;
     smp_br_state_machine_event(p_cb, SMP_BR_AUTH_CMPL_EVT, &smp_int_data);
     return SMP_PAIR_INTERNAL_ERR;
   }
@@ -267,6 +269,10 @@ bool SMP_PairCancel(const RawAddress& bd_addr) {
     smp_int_data.status = SMP_PAIR_FAIL_UNKNOWN;
     smp_sm_event(p_cb, SMP_AUTH_CMPL_EVT, &smp_int_data);
     return true;
+  } else if ((p_cb->flags & SMP_PAIR_FLAGS_WE_STARTED_DD) &&
+             (p_cb->pairing_bda == bd_addr)) {
+    SMP_TRACE_DEBUG("Cancel Pairing: reset smp cb");
+    smp_reset_control_value(p_cb);
   }
 
   return false;

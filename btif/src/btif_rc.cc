@@ -71,6 +71,7 @@
 
 #include <hardware/bt_rc.h>
 #include <hardware/bt_vendor_rc.h>
+#include "btif/include/btif_config.h"
 #include "avrc_defs.h"
 #include "bt_common.h"
 #include "bta_api.h"
@@ -691,11 +692,19 @@ void handle_rc_features(btif_rc_device_cb_t* p_dev) {
 
   btrc_remote_features_t rc_features = BTRC_FEAT_NONE;
   RawAddress avdtp_addr = btif_av_get_addr(p_dev->rc_addr);
+  uint16_t ver = 0;
+  bool is_entry_present = btif_config_get_uint16(rc_addr.ToString().c_str(),
+                                                 AV_REM_CTRL_VERSION_CONFIG_KEY, (uint16_t*) &ver);
+  ver = sdp_get_stored_avrc_tg_version(p_dev->rc_addr);
+  ver = (AVRCP_VERSION_BIT_MASK & ver);
+
   BTIF_TRACE_DEBUG("%s: AVDTP Address: %s AVCTP address: %s", __func__,
                    avdtp_addr.ToString().c_str(), rc_addr.ToString().c_str());
+  BTIF_TRACE_DEBUG("%s:version entry present: %d version: %d", __func__, is_entry_present, ver);
 
-  if (interop_match_addr_or_name(INTEROP_DISABLE_ABSOLUTE_VOLUME, &rc_addr) ||
-      absolute_volume_disabled() || (avdtp_addr != rc_addr)) {
+  if (interop_match_addr_or_name(INTEROP_DISABLE_ABSOLUTE_VOLUME, &rc_addr)
+      || absolute_volume_disabled() || (avdtp_addr != rc_addr) ||
+      (is_entry_present && (ver < AVRC_REV_1_4))) {
     p_dev->rc_features &= ~BTA_AV_FEAT_ADV_CTRL;
   }
 
@@ -2935,6 +2944,11 @@ static bt_status_t get_element_attr_rsp(RawAddress* bd_addr, uint8_t num_attr,
   BTIF_TRACE_DEBUG("%s", __func__);
   CHECK_RC_CONNECTED(p_dev);
 
+  if (num_attr > BTRC_MAX_ELEM_ATTR_SIZE) {
+    BTIF_TRACE_DEBUG("%s: Exceeded number attributes: %d", __func__, num_attr);
+    num_attr = BTRC_MAX_ELEM_ATTR_SIZE;
+  }
+
   memset(element_attrs, 0, sizeof(tAVRC_ATTR_ENTRY) * num_attr);
 
   if (num_attr == 0) {
@@ -2943,7 +2957,8 @@ static bt_status_t get_element_attr_rsp(RawAddress* bd_addr, uint8_t num_attr,
     for (i = 0; i < num_attr; i++) {
       element_attrs[i].attr_id = p_attrs[i].attr_id;
       element_attrs[i].name.charset_id = AVRC_CHARSET_ID_UTF8;
-      element_attrs[i].name.str_len = (uint16_t)strlen((char*)p_attrs[i].text);
+      element_attrs[i].name.str_len =
+             (uint16_t)strnlen((char*)p_attrs[i].text, BTRC_MAX_ATTR_STR_LEN);
       element_attrs[i].name.p_str = p_attrs[i].text;
       BTIF_TRACE_DEBUG(
           "%s: attr_id: 0x%x, charset_id: 0x%x, str_len: %d, str: %s", __func__,

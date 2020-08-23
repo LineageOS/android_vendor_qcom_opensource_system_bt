@@ -82,6 +82,7 @@
 #include "stack/include/a2dp_vendor_ldac_constants.h"
 #define MAX_2MBPS_AVDTP_MTU 663
 #define A2DP_LDAC_CODEC_BEST_SAMPLE_RATE 96000
+#define A2DP_AAC_BOSE_VENDOR_ID 0x009E
 extern const btgatt_interface_t* btif_gatt_get_interface();
 
 bool isDevUiReq = false;
@@ -161,6 +162,9 @@ extern tBTA_AV_HNDL btif_av_get_reconfig_dev_hndl();
 extern void btif_av_reset_codec_reconfig_flag(RawAddress address);
 extern bool bt_split_a2dp_enabled;
 extern void btif_av_set_reconfig_flag(tBTA_AV_HNDL bta_handle);
+extern bool btif_av_check_is_reconfig_pending_flag_set(RawAddress address);
+extern bool btif_av_check_is_cached_reconfig_event_exist(RawAddress address);
+
 /*******************************************************************************
  **
  ** Function         bta_av_co_cp_get_flag
@@ -612,7 +616,10 @@ tA2DP_STATUS bta_av_co_audio_getconfig(tBTA_AV_HNDL hndl, uint8_t* p_codec_info,
       APPL_TRACE_DEBUG("%s: call BTA_AvReconfig(x%x)", __func__, hndl);
       btif_av_set_reconfig_flag(hndl);
       uint8_t index = BTA_AV_CO_AUDIO_HNDL_TO_INDX(hndl);
-      btif_av_clear_remote_start_timer(index);
+      if (index == btif_a2dp_source_last_remote_start_index()) {
+        APPL_TRACE_EVENT("%s: clear remote start idx: %d as part of Reconfig", __func__, index);
+        btif_a2dp_source_cancel_remote_start();
+      }
       BTA_AvReconfig(hndl, true, p_sink->sep_info_idx, p_peer->codec_config,
                      *p_num_protect, bta_av_co_cp_scmst);
       p_peer->rcfg_done = true;
@@ -1161,7 +1168,11 @@ static bool bta_av_co_check_peer_eligible_for_aac_codec(
     APPL_TRACE_DEBUG("%s: vendor: 0x%04x product: 0x%04x version: 0x%04x", __func__, vendor, product, version);
     vndr_prdt_ver_present = true;
   }
-  if (vndr_prdt_ver_present && interop_database_match_version(INTEROP_ENABLE_AAC_CODEC, version) &&
+  if (vndr_prdt_ver_present && (vendor == A2DP_AAC_BOSE_VENDOR_ID)) {
+    APPL_TRACE_DEBUG("%s: vendor id info matches ", __func__);
+    vndr_prdt_ver_present = false;
+    aac_support = true;
+  } else if (vndr_prdt_ver_present && interop_database_match_version(INTEROP_ENABLE_AAC_CODEC, version) &&
       interop_match_vendor_product_ids(INTEROP_ENABLE_AAC_CODEC, vendor, product)) {
     APPL_TRACE_DEBUG("%s: vendor id, product id and version info matching with conf file", __func__);
     vndr_prdt_ver_present = false;
@@ -1541,6 +1552,7 @@ bool bta_av_co_set_codec_user_config(
   tBTA_AV_HNDL hndl = btif_av_get_reconfig_dev_hndl();
   // Find the peer that is currently open
   tBTA_AV_CO_PEER* p_peer = nullptr;
+  APPL_TRACE_DEBUG("%s: hndl: %d", __func__, hndl);
   if (hndl > 0)
     p_peer = bta_av_co_get_peer(hndl);
   else {
@@ -1630,7 +1642,7 @@ bool bta_av_co_set_codec_user_config(
     goto done;
   }
 
-  if (restart_output) {
+  if (restart_output || hndl > 0) {
     uint8_t num_protect = 0;
 #if (BTA_AV_CO_CP_SCMS_T == TRUE)
     if (p_peer->cp_active) num_protect = AVDT_CP_INFO_LEN;
@@ -1658,7 +1670,10 @@ bool bta_av_co_set_codec_user_config(
     }
     btif_av_set_reconfig_flag(hndl);
     uint8_t index = BTA_AV_CO_AUDIO_HNDL_TO_INDX(hndl);
-    btif_av_clear_remote_start_timer(index);
+    if (index == btif_a2dp_source_last_remote_start_index()) {
+      APPL_TRACE_EVENT("%s: clear remote start idx: %d as part of Reconfig", __func__, index);
+      btif_a2dp_source_cancel_remote_start();
+    }
     APPL_TRACE_DEBUG("%s: call BTA_AvReconfig(x%x)", __func__, p_peer->handle);
     BTA_AvReconfig(p_peer->handle, true, p_sink->sep_info_idx,
                    p_peer->codec_config, num_protect, bta_av_co_cp_scmst);
@@ -1681,8 +1696,12 @@ done:
                          sizeof(RawAddress));
     APPL_TRACE_DEBUG("%s BDA: %s", __func__, p_peer->addr.ToString().c_str());
   }
-  if (!success || !restart_output) {
-    APPL_TRACE_DEBUG("%s:reseting codec reconfig flag",__func__);
+
+  if (btif_av_check_is_cached_reconfig_event_exist(bt_addr) &&
+      btif_av_check_is_reconfig_pending_flag_set(bt_addr)) {
+    APPL_TRACE_DEBUG("%s: reconfig event exist to process.",__func__);
+  } else if (!success || !restart_output) {
+    APPL_TRACE_DEBUG("%s: reseting codec reconfig flag",__func__);
     btif_av_reset_codec_reconfig_flag(bt_addr);
   }
   return success;
