@@ -71,7 +71,7 @@ extern void btm_event_filter_complete(uint8_t* p);
 extern void btm_inq_stop_on_ssp(void);
 extern void btm_inq_clear_ssp(void);
 extern tINQ_DB_ENT* btm_inq_db_find(const RawAddress& p_bda);
-extern bool btm_inq_find_bdaddr(const RawAddress& p_bda);
+extern bool btm_inq_find_bdaddr(const RawAddress& p_bda, tBT_DEVICE_TYPE p_dev_type);
 
 /* Internal functions provided by btm_acl.cc
  *******************************************
@@ -276,6 +276,7 @@ extern void btm_sec_set_peer_sec_caps(tACL_CONN* p_acl_cb,
 
 extern void btm_sec_clear_ble_keys(tBTM_SEC_DEV_REC* p_dev_rec);
 extern bool btm_sec_is_a_bonded_dev(const RawAddress& bda);
+extern bool btm_sec_is_a_bonded_dev_by_transport(const RawAddress& bda,uint8_t transport);
 extern void btm_consolidate_dev(tBTM_SEC_DEV_REC* p_target_rec);
 extern bool btm_sec_is_le_capable_dev(const RawAddress& bda);
 extern bool btm_ble_init_pseudo_addr(tBTM_SEC_DEV_REC* p_dev_rec,
