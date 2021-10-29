@@ -297,6 +297,38 @@ bt_status_t remove_sdp_record(int record_id) {
     return BT_STATUS_FAIL;
   }
 
+  bluetooth_sdp_record* record;
+  bluetooth_sdp_types sdp_type = SDP_TYPE_RAW;
+  {
+    std::unique_lock<std::recursive_mutex> lock(sdp_lock);
+    record = sdp_slots[record_id].record_data;
+    if (record != NULL) {
+      sdp_type = record->hdr.type;
+    }
+  }
+  tBTA_SERVICE_ID service_id = -1;
+  switch (sdp_type) {
+    case SDP_TYPE_MAP_MAS:
+      service_id = BTA_MAP_SERVICE_ID;
+      break;
+    case SDP_TYPE_MAP_MNS:
+      service_id = BTA_MN_SERVICE_ID;
+      break;
+    case SDP_TYPE_PBAP_PSE:
+      service_id = BTA_PBAP_SERVICE_ID;
+      break;
+    case SDP_TYPE_PBAP_PCE:
+      service_id = BTA_PCE_SERVICE_ID;
+      break;
+    default:
+      /* other enumeration values were not enabled in {@link on_create_record_event} */
+      break;
+  }
+  if (service_id > 0) {
+    // {@link btif_disable_service} sets the mask {@link btif_enabled_services}.
+    btif_disable_service(service_id);
+  }
+
   /* Get the Record handle, and free the slot */
   handle = free_sdp_slot(record_id);
   BTIF_TRACE_DEBUG("Sdp Server %s id=%d to handle=0x%08x", __func__, record_id,
@@ -327,6 +359,7 @@ void on_create_record_event(int id) {
   BTIF_TRACE_DEBUG("Sdp Server %s", __func__);
   std::unique_lock<std::recursive_mutex> lock(sdp_lock);
   const sdp_slot_t* sdp_slot = start_create_sdp(id);
+  tBTA_SERVICE_ID service_id = -1;
   /* In the case we are shutting down, sdp_slot is NULL */
   if (sdp_slot != NULL) {
     bluetooth_sdp_record* record = sdp_slot->record_data;
@@ -334,12 +367,15 @@ void on_create_record_event(int id) {
     switch (record->hdr.type) {
       case SDP_TYPE_MAP_MAS:
         handle = add_maps_sdp(&record->mas);
+        service_id = BTA_MAP_SERVICE_ID;
         break;
       case SDP_TYPE_MAP_MNS:
         handle = add_mapc_sdp(&record->mns);
+        service_id = BTA_MN_SERVICE_ID;
         break;
       case SDP_TYPE_PBAP_PSE:
         handle = add_pbaps_sdp(&record->pse);
+        service_id = BTA_PBAP_SERVICE_ID;
         break;
       case SDP_TYPE_OPP_SERVER:
         handle = add_opps_sdp(&record->ops);
@@ -349,6 +385,7 @@ void on_create_record_event(int id) {
         break;
       case SDP_TYPE_PBAP_PCE:
         handle = add_pbapc_sdp(&record->pce);
+        service_id = BTA_PCE_SERVICE_ID;
         break;
       default:
         BTIF_TRACE_DEBUG("Record type %d is not supported", record->hdr.type);
@@ -356,6 +393,18 @@ void on_create_record_event(int id) {
     }
     if (handle != -1) {
       set_sdp_handle(id, handle);
+      if (service_id > 0) {
+        /**
+         * {@link btif_enable_service} calls {@link btif_dm_enable_service}, which calls {@link
+         * btif_in_execute_service_request}.
+         *     - {@link btif_enable_service} sets the mask {@link btif_enabled_services}.
+         *     - {@link btif_dm_enable_service} invokes the java callback to return uuids based
+         *       on the enabled services mask.
+         *     - {@link btif_in_execute_service_request} gates the java callback in {@link
+         *       btif_dm_enable_service}.
+         */
+        btif_enable_service(service_id);
+      }
     }
   }
 }
