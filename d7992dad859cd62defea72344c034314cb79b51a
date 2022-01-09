@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9ab16bb_cec9e7a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 17656
+      },
+      "writtenOn": "2022-01-09T12:11:46Z",
+      "side": 1,
+      "message": "Build error - see below",
+      "revId": "d7992dad859cd62defea72344c034314cb79b51a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc428a39_e978e497",
+        "filename": "bta/dm/bta_dm_act.cc",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 17656
+      },
+      "writtenOn": "2022-01-09T12:11:46Z",
+      "side": 1,
+      "message": "vendor/qcom/opensource/commonsys/system/bt/bta/dm/bta_dm_act.cc:42:10: fatal error: \u0027btif_config.h\u0027 file not found\n\nsee also line 61: #include \"btif/include/btif_config.h\"",
+      "revId": "d7992dad859cd62defea72344c034314cb79b51a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
