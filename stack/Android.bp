@@ -1,5 +1,5 @@
 soong_config_module_type_import {
-    from: "device/qcom/qssi/Android.bp",
+    from: "vendor/lineage/build/soong/Android.bp",
     module_types: [
          "bredr_vs_btadva_cc_defaults",
     ],
