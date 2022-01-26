@@ -16,6 +16,24 @@
       "message": "These reverts are pretty over the top for what can effectively be resolved with https://review.lineageos.org/c/LineageOS/android_vendor_lineage/+/322559 and renaming the paths in the QTI repositories. I can see these reverts causing merge conflicts that don\u0027t need to happen.",
       "revId": "67b064a13a796ee35e700443c212be33c5b7ebb6",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9dd7a88c_d794888e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-01-26T09:21:06Z",
+      "side": 1,
+      "message": "I agree, please upload your changes.",
+      "parentUuid": "23fb0757_b8a33e62",
+      "revId": "67b064a13a796ee35e700443c212be33c5b7ebb6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
