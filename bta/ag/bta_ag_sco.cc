@@ -93,6 +93,9 @@ bool sco_init_rmt_xfer = false;
 #define BTA_AG_XSCO_COLLISION_TIMEOUT_MS (2 * 1000) /* 2 seconds */
 #endif
 
+#ifndef BTA_AG_XSCO_FALLBACK_SCO_TIMEOUT_MS
+#define BTA_AG_XSCO_FALLBACK_SCO_TIMEOUT_MS (50) /* 0.05 seconds */
+#endif
 static bool sco_allowed = true;
 static RawAddress active_device_addr;
 
@@ -330,6 +333,18 @@ static void bta_ag_sco_disc_cback(uint16_t sco_idx) {
                         bta_ag_xsco_collision_timer_cback,
                         bta_ag_cb.sco.p_curr_scb);
       bta_ag_cb.sco.p_curr_scb->no_of_xsco_trials++;
+     } else if ( status != HCI_ERR_CONN_CAUSE_LOCAL_HOST &&
+                 status != HCI_ERR_PEER_USER &&
+                 status != HCI_ERR_HOST_REJECT_SECURITY &&
+                 bta_ag_cb.sco.p_curr_scb != NULL &&
+        bta_ag_cb.sco.p_curr_scb->no_of_xsco_retry == 0){
+      APPL_TRACE_IMP("%s: xSCO disc status is %x, retry xSCO after %x ms",
+                     __func__, status, BTA_AG_XSCO_FALLBACK_SCO_TIMEOUT_MS);
+      alarm_set_on_mloop(bta_ag_cb.sco.p_curr_scb->xsco_conn_collision_timer,
+                        BTA_AG_XSCO_FALLBACK_SCO_TIMEOUT_MS,
+                        bta_ag_xsco_collision_timer_cback,
+                        bta_ag_cb.sco.p_curr_scb);
+      bta_ag_cb.sco.p_curr_scb->no_of_xsco_retry++;
     }
   } else {
     /* no match found */
@@ -673,9 +688,14 @@ bool bta_ag_create_sco(tBTA_AG_SCB* p_scb, bool is_orig) {
       params.max_latency_ms = 14;
   }
 #endif
-
   /* If initiating, setup parameters to start SCO/eSCO connection */
   if (is_orig) {
+     if (p_scb->no_of_xsco_retry == 1) {
+      APPL_TRACE_DEBUG("%s: change retransmission effort to 0, retry %d",
+         __func__ , p_scb->no_of_xsco_retry) ;
+      params.retransmission_effort = ESCO_RETRANSMISSION_OFF;
+      p_scb->no_of_xsco_retry++;
+    }
     bta_ag_cb.sco.is_local = true;
     /* Set eSCO Mode */
     BTM_SetEScoMode(&params);
@@ -805,7 +825,6 @@ static void bta_ag_create_pending_sco(tBTA_AG_SCB* p_scb, bool is_local) {
         params.retransmission_effort = ESCO_RETRANSMISSION_POWER;
       }
     }
-
     /* Bypass voice settings if enhanced SCO setup command is supported */
     if (!controller_get_interface()
               ->supports_enhanced_setup_synchronous_connection() ||
@@ -1746,12 +1765,23 @@ void bta_ag_sco_event(tBTA_AG_SCB* p_scb, uint8_t event) {
           }
           else {
 #endif
-          /* If not closing scb, just close it */
-          if (p_scb != p_sco->p_curr_scb) {
-            /* remove listening connection */
-            bta_ag_remove_sco(p_scb, false);
-          } else
-            p_sco->state = BTA_AG_SCO_SHUTTING_ST;
+            /* If not closing scb, just close it */
+            if (p_scb != p_sco->p_curr_scb) {
+              /* remove listening connection */
+              bta_ag_remove_sco(p_scb, false);
+            } else {
+              // if RFCOMM conn closed, move to shutdown/listen state
+              if (p_scb->svc_conn) {
+                p_sco->state = BTA_AG_SCO_SHUTTING_ST;
+              } else {
+                APPL_TRACE_IMP("RFCOMM got disconnected before SCO close");
+                if (!bta_ag_other_scb_open(p_scb)) {
+                  p_sco->state = BTA_AG_SCO_SHUTDOWN_ST;
+                } else {/* Other instance is still listening */
+                  p_sco->state = BTA_AG_SCO_LISTEN_ST;
+                }
+              }
+            }
 
 #if (TWS_AG_ENABLED == TRUE)
           }
@@ -2425,6 +2455,7 @@ void bta_ag_sco_conn_open(tBTA_AG_SCB* p_scb,
 
     /* reset collision trials and timer */
     p_scb->no_of_xsco_trials = 0;
+    p_scb->no_of_xsco_retry = 0;
     alarm_cancel(p_scb->xsco_conn_collision_timer);
 
     /* reset to mSBC T2 settings as the preferred */
@@ -2505,9 +2536,14 @@ void bta_ag_sco_conn_close(tBTA_AG_SCB* p_scb,
             (p_scb->post_sco == BTA_AG_POST_SCO_CALL_END)) {
            bta_sys_sco_unuse(BTA_ID_AG, p_scb->app_id, p_scb->peer_addr);
      }
-
-     /* call app callback */
-     bta_ag_cback_sco(p_scb, BTA_AG_AUDIO_CLOSE_EVT);
+     if (p_scb->no_of_xsco_retry == 1) {
+       APPL_TRACE_WARNING(
+        "%s: Retry xSCO connection. Don't notify app callback xSCO disconnected",
+        __func__);
+     } else {
+       /* call app callback */
+       bta_ag_cback_sco(p_scb, BTA_AG_AUDIO_CLOSE_EVT);
+     }
      p_scb->codec_msbc_settings = BTA_AG_SCO_MSBC_SETTINGS_T2;
 #if (SWB_ENABLED == TRUE)
      p_scb->codec_swb_settings = BTA_AG_SCO_SWB_SETTINGS_Q0;

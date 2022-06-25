@@ -1096,6 +1096,13 @@ class BleAdvertisingManagerImpl
                                                       base::DoNothing());
     }
 
+    if (p_inst->timeout_timer) {
+      VLOG(1) << __func__ << " Cancelling timer for inst_id: " << +inst_id;
+      alarm_cancel(p_inst->timeout_timer);
+      alarm_free(p_inst->timeout_timer);
+      p_inst->timeout_timer = nullptr;
+    }
+
     alarm_cancel(p_inst->adv_raddr_timer);
     p_inst->in_use = false;
     p_inst->skip_rpa_count = 0;

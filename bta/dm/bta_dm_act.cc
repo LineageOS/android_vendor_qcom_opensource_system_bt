@@ -52,6 +52,7 @@
 #include "osi/include/properties.h"
 #include "sdp_api.h"
 #include "bta_sdp_api.h"
+#include "stack/btm/btm_ble_int.h"
 #include "stack/gatt/connection_manager.h"
 #include "stack/include/gatt_api.h"
 #include "utl.h"
@@ -1075,6 +1076,12 @@ void bta_dm_remove_device(tBTA_DM_MSG* p_data) {
   /* Delete the other paired device too */
   if (continue_delete_other_dev && !other_address.IsEmpty())
     bta_dm_process_remove_device(other_address);
+
+  /* Check the length of the paired devices, and if 0 then reset IRK */
+  if (btif_storage_get_num_bonded_devices() < 1) {
+    LOG(INFO) << "Last paired device removed, resetting IRK";
+    btm_ble_reset_id();
+  }
 }
 
 /*******************************************************************************
@@ -4891,9 +4898,10 @@ static void bta_dm_observe_results_cb(tBTM_INQ_RESULTS* p_inq, uint8_t* p_eir,
   tBTA_DM_SEARCH result;
   tBTM_INQ_INFO* p_inq_info;
   APPL_TRACE_DEBUG("bta_dm_observe_results_cb");
+
   result.inq_res.bd_addr = p_inq->remote_bd_addr;
-  result.inq_res.original_bda = p_inq->original_bda;
   result.inq_res.rssi = p_inq->rssi;
+  result.inq_res.original_bda = p_inq->original_bda;
   result.inq_res.ble_addr_type = p_inq->ble_addr_type;
   result.inq_res.inq_result_type = p_inq->inq_result_type;
   result.inq_res.device_type = p_inq->device_type;

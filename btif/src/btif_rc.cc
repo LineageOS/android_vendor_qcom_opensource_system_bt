@@ -1715,16 +1715,9 @@ void btif_rc_check_handle_pending_play(const RawAddress& peer_addr,
       remote_cmd.hdr.ctype = AVRC_CMD_CTRL;
       remote_cmd.hdr.opcode = AVRC_OP_PASS_THRU;
 
-      /* delay sending to app, else there is a timing issue in the framework,
-       ** which causes the audio to be on th device's speaker. Delay between
-       ** OPEN & RC_PLAYs
-      */
-      sleep_ms(200);
       /* send to app - both PRESSED & RELEASED */
       remote_cmd.key_state = AVRC_STATE_PRESS;
       handle_rc_passthrough_cmd(&remote_cmd);
-
-      sleep_ms(100);
 
       remote_cmd.key_state = AVRC_STATE_RELEASE;
       handle_rc_passthrough_cmd(&remote_cmd);

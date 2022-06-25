@@ -111,6 +111,10 @@
 #define L2CAP_CMD_MTU_MPS_OVERHEAD 4
 /* Channel ID (CID) */
 #define L2CAP_CMD_CID_LEN 2
+/* MTU(2), MPS(2), DCID(2)*/
+#define L2CAP_CMD_CREDIT_BASED_RECONFIG_MIN_LEN 6
+/* MTU(2), MPS(2), DCID(2*5)*/
+#define L2CAP_CMD_CREDIT_BASED_RECONFIG_MAX_LEN 14
 
 /* Define the packet boundary flags
 */

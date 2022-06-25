@@ -611,7 +611,13 @@ void rfc_process_pn(tRFC_MCB* p_mcb, bool is_command, MX_FRAME* p_frame) {
   }
   /* If we are not awaiting response just ignore it */
   p_port = port_find_mcb_dlci_port(p_mcb, dlci);
-  if ((p_port == NULL) || !(p_port->rfc.expected_rsp & RFC_RSP_PN)) return;
+  if (p_port == NULL) {
+    rfc_send_dm(p_mcb, dlci, false);
+    RFCOMM_TRACE_WARNING("%s, Send DM as port not existing for dlci = %d",
+                              __func__, dlci);
+    return;
+  }
+  if (!(p_port->rfc.expected_rsp & RFC_RSP_PN)) return;
 
   p_port->rfc.expected_rsp &= ~RFC_RSP_PN;
 

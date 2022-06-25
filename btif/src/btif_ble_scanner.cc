@@ -155,7 +155,8 @@ void bta_scan_results_cb_impl(RawAddress bd_addr, tBT_DEVICE_TYPE device_type,
   btif_storage_set_remote_addr_type(&bd_addr, addr_type);
   HAL_CBACK(bt_gatt_callbacks, scanner->scan_result_cb, ble_evt_type, addr_type,
             &bd_addr, ble_primary_phy, ble_secondary_phy, ble_advertising_sid,
-            ble_tx_power, rssi, ble_periodic_adv_int, std::move(value), &original_bda);
+            ble_tx_power, rssi, ble_periodic_adv_int, std::move(value),
+            &original_bda);
 }
 
 void bta_scan_results_cb(tBTA_DM_SEARCH_EVT event, tBTA_DM_SEARCH* p_data) {

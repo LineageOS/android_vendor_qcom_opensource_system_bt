@@ -238,7 +238,7 @@ static future_t* start_up(void) {
   number_of_scrambling_supported_freqs = 0;
   soc_add_on_features_length = 0;
   host_add_on_features_length = 0;
-  char qhs_value[2] = {};
+  char qhs_value[PROPERTY_VALUE_MAX] = "0";
   uint8_t qhs_support_mask = 0;
 
 // read properties  for offtarget test setup

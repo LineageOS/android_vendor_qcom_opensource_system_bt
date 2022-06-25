@@ -1381,3 +1381,58 @@ bool eatt_congest_notify_apps(tGATT_TCB* p_tcb, uint16_t cid, bool congested) {
 
   return ret;
 }
+
+/*******************************************************************************
+ *
+ * Function         gatt_send_conn_cb_after_enc_failure
+ *
+ * Description      The function sends connection complete cb to apps which have
+ *                  requested for EATT after encryption failure.
+ *                  Encryption failure generally happens with Pin or Key Missing
+ *                  status.
+ *
+ * Returns          void
+ *
+ ******************************************************************************/
+void gatt_send_conn_cb_after_enc_failure(tGATT_TCB* p_tcb) {
+  uint8_t i;
+  tGATT_REG* p_reg;
+  uint16_t conn_id;
+
+  if (!p_tcb) {
+    VLOG(1) << __func__ << "p_tcb is NULL ";
+    return;
+  }
+
+  VLOG(1) << __func__ << " : address " << p_tcb->peer_bda;
+  std::set<tGATT_IF> apps =
+      connection_manager::get_apps_connecting_to(p_tcb->peer_bda);
+  std::unordered_set<uint8_t> dir_conn_apps = p_tcb->app_hold_link;
+  bool is_eatt_dev = is_eatt_device(p_tcb->peer_bda);
+
+  /* notifying all applications for the connection up event */
+  for (i = 0, p_reg = gatt_cb.cl_rcb; i < GATT_MAX_APPS; i++, p_reg++) {
+    bool is_app_req_eatt_conn = false;
+    if (!p_reg->in_use) continue;
+
+    if (apps.find(p_reg->gatt_if) != apps.end()) {
+      if (p_reg->eatt_support)
+        is_app_req_eatt_conn = true;
+    }
+
+    if (dir_conn_apps.find(p_reg->gatt_if) != dir_conn_apps.end()) {
+      if (p_reg->eatt_support)
+        is_app_req_eatt_conn = true;
+    }
+
+    if (is_eatt_dev && is_app_req_eatt_conn) {
+      if (p_reg->app_cb.p_conn_cb) {
+        conn_id = GATT_CREATE_CONN_ID(p_tcb->tcb_idx, p_reg->gatt_if);
+        VLOG(1) << __func__ << " Sending conn cb after encrypt failure:"
+                               " conn_id: " << conn_id;
+        (*p_reg->app_cb.p_conn_cb)(p_reg->gatt_if, p_tcb->peer_bda, conn_id, true,
+                                   0, p_tcb->transport);
+      }
+    }
+  }
+}

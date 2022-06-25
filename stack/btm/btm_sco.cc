@@ -403,6 +403,7 @@ static tBTM_STATUS btm_send_connect_request(uint16_t acl_handle,
         temp_packet_types |=
             (ESCO_PKT_TYPES_MASK_NO_2_EV3 | ESCO_PKT_TYPES_MASK_NO_2_EV5);
       }
+
       if (!HCI_EDR_ESCO_3MPS_SUPPORTED(p_acl->peer_lmp_feature_pages[0])) {
         BTM_TRACE_WARNING("BTM Remote does not support 3-EDR eSCO");
         temp_packet_types |=
@@ -447,13 +448,8 @@ static tBTM_STATUS btm_send_connect_request(uint16_t acl_handle,
     /* Save the previous types in case command fails */
     uint16_t saved_packet_types = p_setup->packet_types;
     p_setup->packet_types = temp_packet_types;
-
     bt_soc_type_t soc_type = controller_get_interface()->get_soc_type();
     BTM_TRACE_DEBUG("%s: soc_type: %d", __func__, soc_type);
-    if(!(p_setup->packet_types & ~BTM_SCO_LINK_ONLY_MASK)){
-       p_setup->retransmission_effort = 0;
-       BTM_TRACE_DEBUG("%s: change retransmission effort to 0", __func__);
-    }
     /* Use Enhanced Synchronous commands if supported */
     if (controller_get_interface()
             ->supports_enhanced_setup_synchronous_connection() &&

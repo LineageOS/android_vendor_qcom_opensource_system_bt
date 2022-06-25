@@ -1450,6 +1450,16 @@ bool a2dp_get_selected_hal_codec_config(CodecConfiguration* codec_config) {
     codec_based_bit_rate = aac_cie.bitRate;
 
     if (is_AAC_frame_ctrl_stack_enable) {
+      if (btif_av_is_peer_edr() && (btif_av_peer_supports_3mbps() == FALSE)) {
+        // This condition would be satisfied only if the remote device is
+        // EDR and supports only 2 Mbps, but the effective AVDTP MTU size
+        // exceeds the 2DH5 packet size.
+        if (peer_param.peer_mtu > MAX_2MBPS_AVDTP_MTU) {
+          peer_param.peer_mtu = MAX_2MBPS_AVDTP_MTU;
+          codec_config->peerMtu = peer_param.peer_mtu - A2DP_HEADER_SIZE;
+          APPL_TRACE_WARNING("%s Restricting MTU size to %d", __func__, peer_param.peer_mtu);
+        }
+      }
       int sample_rate = A2DP_GetTrackSampleRate(p_codec_info);
       mtu_based_bit_rate = (peer_param.peer_mtu - AAC_LATM_HEADER)
                                           * (8 * sample_rate / AAC_SAMPLE_SIZE);
@@ -1614,7 +1624,9 @@ bool a2dp_get_selected_hal_codec_config_2_1(CodecConfiguration_2_1* codec_config
            pclient_cbs[profile - 1]->get_frame_length_cb(lc3Config.rxConfigSet);
 
       lc3Config.txConfig.bitsPerSample = BitsPerSample::BITS_24;
-      lc3Config.txConfig.numBlocks = 1;
+
+      lc3Config.txConfig.numBlocks =
+           pclient_cbs[profile - 1]->get_lc3_blocks_per_sdu(lc3Config.rxConfigSet);
     }
 
     uint8_t cs[16] = {0};
@@ -1679,8 +1691,11 @@ bool a2dp_get_selected_hal_codec_config_2_1(CodecConfiguration_2_1* codec_config
           pclient_cbs[profile - 1]->get_mtu_cb(0, lc3Config.rxConfigSet);
       lc3Config.rxConfig.frameDuration =
           pclient_cbs[profile - 1]->get_frame_length_cb(lc3Config.rxConfigSet);
+
       lc3Config.rxConfig.bitsPerSample = BitsPerSample::BITS_24;
-      lc3Config.rxConfig.numBlocks = 1;
+
+      lc3Config.rxConfig.numBlocks =
+          pclient_cbs[profile - 1]->get_lc3_blocks_per_sdu(lc3Config.rxConfigSet);
     } else if (type == GCP_RX_PROFILE) {
       LOG(ERROR) << __func__ << ": Filling Gaming VBC values";
 
@@ -1701,8 +1716,11 @@ bool a2dp_get_selected_hal_codec_config_2_1(CodecConfiguration_2_1* codec_config
           pclient_cbs[profile - 1]->get_mtu_cb(0, lc3Config.rxConfigSet);
       lc3Config.rxConfig.frameDuration =
           pclient_cbs[profile - 1]->get_frame_length_cb(lc3Config.rxConfigSet);
+
       lc3Config.rxConfig.bitsPerSample = BitsPerSample::BITS_24;
-      lc3Config.rxConfig.numBlocks = 1;
+
+      lc3Config.rxConfig.numBlocks =
+           pclient_cbs[profile - 1]->get_lc3_blocks_per_sdu(lc3Config.rxConfigSet);
 
       //LC3Q related Info for VBC
       if (pclient_cbs[profile - 1]->get_is_codec_type_lc3q(lc3Config.rxConfigSet)) {
@@ -1723,7 +1741,9 @@ bool a2dp_get_selected_hal_codec_config_2_1(CodecConfiguration_2_1* codec_config
     // To Air
     for (int i = 0; i < cis_count; i++) {
       if (lc3Config.txConfig.channelMode == LC3ChannelMode::STEREO) {//TODO:change rx in wmcp case
-        lc3Config.streamMap[(i*3)] = (CHANNEL_FL + (i % 2));
+        int audio_location = pclient_cbs[profile - 1]->get_audio_location(i%2, TX_ONLY_CONFIG);
+        LOG(ERROR) << __func__ << ": Stereo config audio_location: " << audio_location;
+        lc3Config.streamMap[(i*3)] = audio_location & (CHANNEL_FR | CHANNEL_FL);
         LOG(ERROR) << __func__ << ": Stereo config of ToAir";
       } else if (lc3Config.txConfig.channelMode == LC3ChannelMode::JOINT_STEREO) {
         LOG(ERROR) << __func__ << ": joint Stereo config of ToAir";
@@ -1743,7 +1763,9 @@ bool a2dp_get_selected_hal_codec_config_2_1(CodecConfiguration_2_1* codec_config
         if (((type == WMCP_PROFILE) || (type == GCP_RX_PROFILE)) ?
              lc3Config.rxConfig.channelMode == LC3ChannelMode::STEREO :
              lc3Config.txConfig.channelMode == LC3ChannelMode::STEREO) {//TODO:change rx in wmcp case
-          lc3Config.streamMap[(i*3)] = (CHANNEL_FL + (i % 2));
+          int audio_location = pclient_cbs[profile - 1]->get_audio_location(i%2, RX_ONLY_CONFIG);
+          LOG(ERROR) << __func__ << ": Stereo config audio_location: " << audio_location;
+          lc3Config.streamMap[(i*3)] = audio_location & (CHANNEL_FR | CHANNEL_FL);
           LOG(ERROR) << __func__ << ": Stereo/VBC config of FromAir";
         } else if (lc3Config.txConfig.channelMode == LC3ChannelMode::JOINT_STEREO) {
           lc3Config.streamMap[(i*3)] = (CHANNEL_FR | CHANNEL_FL);
@@ -2138,6 +2160,16 @@ bool a2dp_get_selected_hal_codec_config_2_1(CodecConfiguration_2_1* codec_config
     codec_based_bit_rate = aac_cie.bitRate;
 
     if (is_AAC_frame_ctrl_stack_enable) {
+      if (btif_av_is_peer_edr() && (btif_av_peer_supports_3mbps() == FALSE)) {
+        // This condition would be satisfied only if the remote device is
+        // EDR and supports only 2 Mbps, but the effective AVDTP MTU size
+        // exceeds the 2DH5 packet size.
+        if (peer_param.peer_mtu > MAX_2MBPS_AVDTP_MTU) {
+          peer_param.peer_mtu = MAX_2MBPS_AVDTP_MTU;
+          codec_config->peerMtu = peer_param.peer_mtu - A2DP_HEADER_SIZE;
+          APPL_TRACE_WARNING("%s Restricting MTU size to %d", __func__, peer_param.peer_mtu);
+        }
+      }
       int sample_rate = A2DP_GetTrackSampleRate(p_codec_info);
       mtu_based_bit_rate = (peer_param.peer_mtu - AAC_LATM_HEADER)
                                           * (8 * sample_rate / AAC_SAMPLE_SIZE);

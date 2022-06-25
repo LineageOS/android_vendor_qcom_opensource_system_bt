@@ -37,6 +37,7 @@
 #include "osi/include/osi.h"
 #include "stack/gatt/eatt_int.h"
 #include "osi/include/properties.h"
+#include "eatt_int.h"
 
 using base::StringPrintf;
 
@@ -1296,6 +1297,17 @@ static void gatt_l2cif_eatt_connect_cfm_cback(RawAddress &p_bd_addr,
 
     if (!p_tcb) {
       VLOG(1) << __func__ << " p_tcb is null";
+      return;
+    }
+
+    if (result == L2CAP_ECFC_ALL_CONNS_REFUSED_INSUFF_AUTHENTICATION) {
+      VLOG(1) << " EATT connection rejected due to insufficient authentication,"
+                 " Set eatt as not supported";
+      p_tcb->is_eatt_supported = false;
+      gatt_eatt_bcb_in_progress_dealloc(p_bd_addr);
+      p_tcb->apps_needing_eatt.clear();
+
+      gatt_send_conn_cb_after_enc_failure(p_tcb);
       return;
     }
 

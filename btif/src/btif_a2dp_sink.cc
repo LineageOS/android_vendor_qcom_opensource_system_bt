@@ -288,26 +288,37 @@ void btif_a2dp_sink_update_decoder(const uint8_t* p_codec_info) {
 }
 
 void btif_a2dp_sink_on_idle(void) {
+  APPL_TRACE_DEBUG("%s: btif_a2dp_sink_state: %d",
+                                 __func__, btif_a2dp_sink_state);
+
   if (btif_a2dp_sink_state == BTIF_A2DP_SINK_STATE_OFF) return;
 
   btif_a2dp_sink_audio_handle_stop_decoding();
   btif_a2dp_sink_clear_track_event_req();
-  APPL_TRACE_DEBUG("Stopped BT track");
+  APPL_TRACE_DEBUG("%s: Stopped BT track", __func__);
 }
 
 void btif_a2dp_sink_on_stopped(UNUSED_ATTR tBTA_AV_SUSPEND* p_av_suspend) {
+  APPL_TRACE_DEBUG("%s: btif_a2dp_sink_state: %d",
+                                 __func__, btif_a2dp_sink_state);
+
   if (btif_a2dp_sink_state == BTIF_A2DP_SINK_STATE_OFF) return;
 
   btif_a2dp_sink_audio_handle_stop_decoding();
 }
 
 void btif_a2dp_sink_on_suspended(UNUSED_ATTR tBTA_AV_SUSPEND* p_av_suspend) {
+  APPL_TRACE_DEBUG("%s: btif_a2dp_sink_state: %d",
+                                 __func__, btif_a2dp_sink_state);
+
   if (btif_a2dp_sink_state == BTIF_A2DP_SINK_STATE_OFF) return;
 
   btif_a2dp_sink_audio_handle_stop_decoding();
 }
 
 static void btif_a2dp_sink_audio_handle_stop_decoding(void) {
+  APPL_TRACE_DEBUG("%s: btif_a2dp_sink_state: %d",
+                                 __func__, btif_a2dp_sink_state);
   btif_a2dp_sink_cb.rx_flush = true;
   btif_a2dp_sink_audio_rx_flush_req();
 

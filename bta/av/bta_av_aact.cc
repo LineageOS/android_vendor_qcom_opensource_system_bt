@@ -472,6 +472,7 @@ static bool bta_av_next_getcap(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
       if ((*p_req)(p_scb->peer_addr,
                      p_scb->sep_info[i].seid,
                      p_scb->p_cap, bta_av_dt_cback[p_scb->hdi]) == AVDT_SUCCESS) {
+        APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
         sent_cmd = TRUE;
         break;
       } else
@@ -1010,22 +1011,6 @@ void bta_av_role_res(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
       p_scb->wait &= ~BTA_AV_WAIT_ROLE_SW_BITS;
 
       if (p_data->role_res.hci_status != HCI_SUCCESS) {
-        /* Open failed because of role switch. */
-        /*av_open.bd_addr = p_scb->peer_addr;
-        av_open.chnl = p_scb->chnl;
-        av_open.hndl = p_scb->hndl;*/
-        /* update Master/Slave Role for open event */
-        /*if (BTM_GetRole(p_scb->peer_addr, &cur_role) == BTM_SUCCESS)
-          av_open.role = cur_role;
-        av_open.status = BTA_AV_FAIL_ROLE;
-        if (p_scb->seps[p_scb->sep_idx].tsep == AVDT_TSEP_SRC)
-          av_open.sep = AVDT_TSEP_SNK;
-         else if (p_scb->seps[p_scb->sep_idx].tsep == AVDT_TSEP_SNK) {
-          av_open.sep = AVDT_TSEP_SRC;
-        }
-        tBTA_AV bta_av_data;
-        bta_av_data.open = av_open;
-        (*bta_av_cb.p_cback)(BTA_AV_OPEN_EVT, &bta_av_data);*/
         p_scb->q_info.open.switch_res = BTA_AV_RS_NONE;
         bta_av_do_disc_a2dp(p_scb, (tBTA_AV_DATA*)&(p_scb->q_info.open));
       } else {
@@ -1276,21 +1261,6 @@ void bta_av_cleanup(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
   p_scb->vendor_start = false;
   alarm_cancel(p_scb->avrc_ct_timer);
 
-  /* TODO(eisenbach): RE-IMPLEMENT USING VSC OR HAL EXTENSION
-    vendor_get_interface()->send_command(
-        (vendor_opcode_t)BT_VND_OP_A2DP_OFFLOAD_STOP, (void*)&p_scb->l2c_cid);
-    if (p_scb->offload_start_pending) {
-      tBTA_AV_STATUS status = BTA_AV_FAIL_STREAM;
-      tBTA_AV bta_av_data;
-      bta_av_data.status = status;
-      (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &bta_av_data);
-    }
-  */
-  /*if (BTM_IS_QTI_CONTROLLER())
-  {
-    APPL_TRACE_ERROR("bta_av_cleanup: Vendor Stop");
-    bta_av_vendor_offload_stop();
-  }*/
   p_scb->offload_start_pending = false;
   p_scb->skip_sdp = false;
   p_scb->coll_mask = 0;
@@ -1307,7 +1277,7 @@ void bta_av_cleanup(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
   p_scb->cache_setconfig = NULL;
   if (p_scb->deregistring) {
     /* remove stream */
-  for (int i = 0; i < BTAV_A2DP_CODEC_INDEX_MAX; i++) {
+    for (int i = 0; i < BTAV_A2DP_CODEC_INDEX_MAX; i++) {
       if (p_scb->seps[i].av_handle) AVDT_RemoveStream(p_scb->seps[i].av_handle);
       p_scb->seps[i].av_handle = 0;
     }
@@ -1456,6 +1426,7 @@ void bta_av_disconnect_req(tBTA_AV_SCB* p_scb,
     p_rcb = bta_av_get_rcb_by_shdl((uint8_t)(p_scb->hdi + 1));
     if (p_rcb) bta_av_del_rc(p_rcb);
     AVDT_DisconnectReq(p_scb->peer_addr, bta_av_dt_cback[p_scb->hdi]);
+    APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
   } else {
     bta_av_ssm_execute(p_scb, BTA_AV_AVDT_DISCONNECT_EVT, NULL);
   }
@@ -1937,6 +1908,7 @@ void bta_av_connect_req(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
 
   result = AVDT_ConnectReq(p_scb->peer_addr, p_scb->sec_mask,
                   bta_av_dt_cback[p_scb->hdi]);
+  APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
   if (result != AVDT_SUCCESS) {
     /* AVDT connect failed because of resource issue
      * trigger the SDP fail event to enable the cleanup
@@ -2200,8 +2172,8 @@ void bta_av_set_use_rc(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
  ******************************************************************************/
 void bta_av_cco_close(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
   uint16_t mtu;
-  APPL_TRACE_DEBUG("%s: peer_addr: %s", __func__,
-                     p_scb->peer_addr.ToString().c_str());
+  APPL_TRACE_DEBUG("%s: peer_addr: %s state: %d", __func__,
+                     p_scb->peer_addr.ToString().c_str(), p_scb->state);
 
   mtu = bta_av_chk_mtu(p_scb, BTA_AV_MAX_A2DP_MTU);
 
@@ -2271,6 +2243,7 @@ void bta_av_open_failed(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
     (*bta_av_cb.p_cback)(BTA_AV_OPEN_EVT, &bta_av_data);
   } else {
     AVDT_DisconnectReq(p_scb->peer_addr, bta_av_dt_cback[p_scb->hdi]);
+    APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
   }
 }
 
@@ -2456,6 +2429,7 @@ void bta_av_setconfig_rej(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
  ******************************************************************************/
 void bta_av_discover_req(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
   /* send avdtp discover request */
+  APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
   if (AVDT_DiscoverReq(p_scb->peer_addr, p_scb->sep_info,
       BTA_AV_NUM_SEPS, bta_av_dt_cback[p_scb->hdi]) != AVDT_SUCCESS) {
     APPL_TRACE_ERROR("bta_av_discover_req command couldn't be sent because of resource constraint");
@@ -3365,21 +3339,6 @@ void bta_av_suspend_cfm(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
   }
   /* in case that we received suspend_ind, we may need to call co_stop here */
   if (p_scb->co_started) {
-    /* TODO(eisenbach): RE-IMPLEMENT USING VSC OR HAL EXTENSION
-    vendor_get_interface()->send_command(
-        (vendor_opcode_t)BT_VND_OP_A2DP_OFFLOAD_STOP, (void*)&p_scb->l2c_cid);
-    if (p_scb->offload_start_pending) {
-      tBTA_AV_STATUS status = BTA_AV_FAIL_STREAM;
-      tBTA_AV bta_av_data;
-      bta_av_data.status = status;
-      (*bta_av_cb.p_cback)(BTA_AV_OFFLOAD_START_RSP_EVT, &bta_av_data);
-    }
-    p_scb->offload_start_pending = false;
-    */
-    /*if (BTM_IS_QTI_CONTROLLER() && p_scb->offload_supported) {
-      bta_av_vendor_offload_stop(p_scb);
-      p_scb->offload_supported = false;
-    }*/
     bta_av_stream_chg(p_scb, false);
 
     {
@@ -3472,9 +3431,11 @@ void bta_av_rcfg_str_ok(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
  *
  ******************************************************************************/
 void bta_av_rcfg_failed(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
-  APPL_TRACE_ERROR("%s: num_recfg=%d conn_lcb=0x%x peer_addr=%s", __func__,
-                   p_scb->num_recfg, bta_av_cb.conn_lcb,
-                   p_scb->peer_addr.ToString().c_str());
+  uint8_t err_code = p_data->str_msg.msg.hdr.err_code;
+
+  APPL_TRACE_ERROR("%s: num_recfg=%d conn_lcb=0x%x peer_addr=%s, err_code: %d",
+                   __func__, p_scb->num_recfg, bta_av_cb.conn_lcb,
+                   p_scb->peer_addr.ToString().c_str(), err_code);
 
   if ((p_scb->num_recfg > BTA_AV_RECONFIG_RETRY) ||
       (!BTM_IsAclConnectionUp(p_scb->peer_addr, BT_TRANSPORT_BR_EDR))) {
@@ -3495,6 +3456,7 @@ void bta_av_rcfg_failed(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
     p_scb->num_recfg++;
     if (bta_av_cb.conn_lcb) {
       AVDT_DisconnectReq(p_scb->peer_addr, bta_av_dt_cback[p_scb->hdi]);
+      APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
     } else {
       bta_av_connect_req(p_scb, NULL);
     }
@@ -3525,6 +3487,7 @@ void bta_av_rcfg_connect(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
 
     AVDT_ConnectReq(p_scb->peer_addr, p_scb->sec_mask,
                     bta_av_dt_cback[p_scb->hdi]);
+    APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
   }
 }
 
@@ -3557,6 +3520,7 @@ void bta_av_rcfg_discntd(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
   } else
     AVDT_ConnectReq(p_scb->peer_addr, p_scb->sec_mask,
                     bta_av_dt_cback[p_scb->hdi]);
+    APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
 }
 
 /*******************************************************************************
@@ -3683,6 +3647,7 @@ void bta_av_rcfg_open(tBTA_AV_SCB* p_scb, UNUSED_ATTR tBTA_AV_DATA* p_data) {
     /* send avdtp discover request */
     AVDT_DiscoverReq(p_scb->peer_addr, p_scb->sep_info, BTA_AV_NUM_SEPS,
                      bta_av_dt_cback[p_scb->hdi]);
+    APPL_TRACE_DEBUG("%s: hdi is: %d , pscb is %x\n", __func__, p_scb->hdi, p_scb);
   } else {
     APPL_TRACE_DEBUG("%s: calling AVDT_OpenReq()", __func__);
     A2DP_DumpCodecInfo(p_scb->cfg.codec_info);
@@ -4494,14 +4459,6 @@ void bta_av_offload_req(tBTA_AV_SCB* p_scb, tBTA_AV_DATA* p_data) {
       offload_start.split_acl = true;
     else
       offload_start.split_acl = false;
-/*
-    if (p_scb->do_scrambling) {
-    //TODO 44.1k should be integrated to single VSC
-      APPL_TRACE_DEBUG("%s:Scrambling enabled, enable multi VSC",__func__);
-      offload_start.split_acl = false;
-      btif_a2dp_src_vsc.multi_vsc_support = true;
-    }
-*/
 #if (TWS_ENABLED == TRUE)
     //We cannot rely on second earbud to set start flag to true.
     //If sencond earbud NACKs avdtp start then we end up in no audio on other device

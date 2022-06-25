@@ -27,12 +27,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ******************************************************************************/
-
+#include <mutex>
 #include "audio_hal_interface/a2dp_encoding.h"
 
 #if AHIM_ENABLED
 
 uint8_t cur_active_profile = A2DP;
+std::mutex active_profile_mtx;
 
 btif_ahim_client_callbacks_t* pclient_cbs[MAX_CLIENT] = {NULL};
 
@@ -52,6 +53,8 @@ void reg_cb_with_ahim(uint8_t client_id, btif_ahim_client_callbacks_t* pclient_c
 
 void btif_ahim_update_current_profile(uint8_t profile)
 {
+  std::lock_guard<std::mutex> lock(active_profile_mtx);
+
   switch(profile)
   {
      case A2DP:
@@ -73,6 +76,8 @@ void btif_ahim_update_current_profile(uint8_t profile)
 
 void btif_ahim_process_request(tA2DP_CTRL_CMD cmd)
 {
+  std::lock_guard<std::mutex> lock(active_profile_mtx);
+
   switch(cur_active_profile)
   {
     case A2DP:

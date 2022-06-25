@@ -98,6 +98,9 @@
 #define AVDT_INT 0 /* initiator */
 #define AVDT_ACP 1 /* acceptor */
 
+#define MAX_2MBPS_AVDTP_MTU 663   // 2DH5 MTU=679, -12 for AVDTP, -4 for L2CAP
+#define MAX_3MBPS_AVDTP_MTU 1005  // 3DH5 MTU=1021, -12 for AVDTP, -4 for L2CAP
+
 /* Media Type of the stream endpoint */
 /* The value does not include the reserved 4-bit LSBs field */
 #define AVDT_MEDIA_TYPE_AUDIO 0 /* Audio SEP */

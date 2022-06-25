@@ -899,6 +899,12 @@ static char* bta_hf_client_parse_cind_list(tBTA_HF_CLIENT_CB* client_cb,
 
   while ((res = sscanf(buffer, "(\"%128[^\"]\",(%u%*[-,]%u))%n", name, &min,
                        &max, &offset)) > 2) {
+    // If remote is sending more than 20 indicators, don't parse
+    // Defensics issue
+    if(index >= BTA_HF_CLIENT_AT_INDICATOR_COUNT) {
+      APPL_TRACE_ERROR("%s: Num of indicators more than max supported (20) ", __func__);
+      return NULL;
+    }
     bta_hf_client_handle_cind_list_item(client_cb, name, min, max, index);
     if (offset == 0) {
       APPL_TRACE_ERROR("%s: Format Error %s", __func__, buffer);

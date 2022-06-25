@@ -723,6 +723,8 @@ void bta_ag_send_call_inds(tBTA_AG_SCB* p_scb, tBTA_AG_RES result) {
     APPL_TRACE_IMP("%s: call/call setup ended, cancel xsco collision timer",
                     __func__);
     alarm_cancel(p_scb->xsco_conn_collision_timer);
+    p_scb->no_of_xsco_retry = 0;
+    p_scb->no_of_xsco_trials = 0;
 
     if (is_blacklisted) {
        APPL_TRACE_IMP("%s: Enable sniff mode for device: %s",
@@ -2115,6 +2117,18 @@ void bta_ag_send_ring(tBTA_AG_SCB* p_scb, UNUSED_ATTR tBTA_AG_DATA* p_data) {
     APPL_TRACE_DEBUG("don't send the ring since there is no MT call setup");
     return;
   }
+
+#ifdef ADV_AUDIO_FEATURE
+  if ((p_scb->conn_service == BTA_AG_HFP) && (p_scb->svc_conn)) {
+    int profile_info = get_active_profile(p_scb->peer_addr, 0);
+    APPL_TRACE_DEBUG("%s: Profile for Call Audio is %d", __func__, profile_info);
+    if (profile_info != 0x0002) {
+      APPL_TRACE_WARNING("%s: HFP is not active, not sending ring", __func__);
+      return;
+    }
+  }
+#endif
+
 #if (TWS_AG_ENABLED == TRUE)
   if (is_twsp_device(p_scb->peer_addr)) {
       if (twsp_ring_needed(p_scb)) {

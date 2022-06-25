@@ -78,5 +78,6 @@ extern void gatt_rsp_enq(tGATT_TCB* p_tcb, uint16_t cid, tGATT_PEND_RSP* p_rsp);
 extern void eatt_disc_rsp_enq(tGATT_TCB* p_tcb, uint16_t cid, BT_HDR *p_msg);
 extern bool eatt_congest_notify_apps(tGATT_TCB* p_tcb, uint16_t cid, bool congested);
 extern tGATT_EBCB* gatt_find_eatt_bcb_using_all_cids(uint16_t lcid);
+extern void gatt_send_conn_cb_after_enc_failure(tGATT_TCB* p_tcb);
 
 #endif

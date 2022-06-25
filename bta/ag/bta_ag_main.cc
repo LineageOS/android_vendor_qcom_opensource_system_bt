@@ -259,6 +259,7 @@ static tBTA_AG_SCB* bta_ag_scb_alloc(void) {
       p_scb->peer_codecs = BTA_AG_CODEC_CVSD;
       p_scb->sco_codec = BTA_AG_CODEC_CVSD;
       p_scb->no_of_xsco_trials = 0;
+      p_scb->no_of_xsco_retry = 0;
       /* set up timers */
       p_scb->ring_timer = alarm_new("bta_ag.scb_ring_timer");
       p_scb->collision_timer = alarm_new("bta_ag.scb_collision_timer");

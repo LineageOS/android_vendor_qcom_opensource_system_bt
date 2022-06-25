@@ -672,7 +672,6 @@ typedef struct {
   int8_t ble_tx_power;
   uint16_t ble_periodic_adv_int;
   uint8_t flag;
-  // Pass original bda up to GattService#onScanResult
   RawAddress original_bda;
 } tBTM_INQ_RESULTS;
 

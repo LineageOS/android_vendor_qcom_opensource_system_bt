@@ -323,6 +323,7 @@ struct tBTA_AG_SCB {
   uint8_t battchg_ind;      /* CIEV battery charge indicator value */
   uint8_t callheld_ind;     /* CIEV call held indicator value */
   uint8_t no_of_xsco_trials; /* no of xSCO retrials when collision happened */
+  uint8_t no_of_xsco_retry;  /* no of xSCO retrials when failure happened*/
   uint32_t bia_masked_out;  /* indicators HF does not want us to send */
   alarm_t* collision_timer;
   alarm_t* ring_timer;

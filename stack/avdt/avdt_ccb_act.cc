@@ -960,7 +960,6 @@ void avdt_ccb_cmd_fail(tAVDT_CCB* p_ccb, tAVDT_CCB_EVT* p_data) {
   tAVDT_MSG msg;
   uint8_t evt;
   tAVDT_SCB* p_scb;
-
   if (p_ccb->p_curr_cmd != NULL) {
     /* set up data */
     msg.hdr.err_code = p_data->err_code;
@@ -969,7 +968,8 @@ void avdt_ccb_cmd_fail(tAVDT_CCB* p_ccb, tAVDT_CCB_EVT* p_data) {
 
     /* pretend that we received a rej message */
     evt = avdt_msg_rej_2_evt[p_ccb->p_curr_cmd->event - 1];
-
+    AVDT_TRACE_DEBUG("%s evt = %d p_ccb->p_curr_cmd->event = %d",
+                      __func__, evt, p_ccb->p_curr_cmd->event);
     if (evt & AVDT_CCB_MKR) {
       tAVDT_CCB_EVT avdt_ccb_evt;
       avdt_ccb_evt.msg = msg;
@@ -977,7 +977,17 @@ void avdt_ccb_cmd_fail(tAVDT_CCB* p_ccb, tAVDT_CCB_EVT* p_data) {
     } else {
       /* we get the scb out of the current cmd */
       p_scb = avdt_scb_by_hdl(*((uint8_t*)(p_ccb->p_curr_cmd + 1)));
-      if (p_scb != NULL) {
+      // In the case where Host has sent out a Delay Report command
+      // but before receiving the response, connection to remote
+      // has timed out, the Delay Report command will be processed
+      // as a pending command. Based on the logic of this function,
+      // we will fake a reject message for every pending command.
+      // The reject message for Delay Report command is defined
+      // as 0 by the table avdt_msg_rej_2_evt which is API_REMOVE_EVENT.
+      // This event will deallocate the scb which will cause DUT to not
+      // advertise the Stream Endpoint in Discover response anymore
+      // until BT reset is done. So we are checking if evt is 0.
+      if (p_scb != NULL && evt != 0) {
         tAVDT_SCB_EVT avdt_scb_evt;
         avdt_scb_evt.msg = msg;
         avdt_scb_event(p_scb, evt, &avdt_scb_evt);

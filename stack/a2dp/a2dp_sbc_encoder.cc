@@ -47,11 +47,7 @@
 //OFFLOAD DEFAULT_BITRATE for 48khz
 #define A2DP_SBC_DEFAULT_OFFLOAD_BITRATE 345
 #define A2DP_SBC_NON_EDR_OFFLOAD_MAX_RATE 237
-/*
- * 2DH5 payload size of:
- * 679 bytes - (4 bytes L2CAP Header + 12 bytes AVDTP Header)
- */
-#define MAX_2MBPS_AVDTP_MTU 663
+
 #define A2DP_SBC_MAX_PCM_ITER_NUM_PER_TICK 3
 
 #define A2DP_SBC_MAX_HQ_FRAME_SIZE_44_1 119

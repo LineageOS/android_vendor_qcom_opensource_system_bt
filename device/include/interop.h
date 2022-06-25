@@ -289,6 +289,13 @@ typedef enum {
   //are sent before sco is opened
   INTEROP_DELAY_SCO_FOR_MO_CALL,
 
+  //some remotes will disconnect ACL link if both RC and AV are disconnected
+  INTEROP_KEEP_RC_CONNECTED_AV_DISCONNECTED,
+
+  //Some remote hid devices cannot work properly as they laod special hid usb driver in kernel,
+  //so modify their vid/pid so that generic hid driver are loaded.
+  INTEROP_CHANGE_HID_VID_PID,
+
   END_OF_INTEROP_LIST
 } interop_feature_t;
 

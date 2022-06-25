@@ -117,6 +117,7 @@ void BTA_AvEnable(tBTA_SEC sec_mask, tBTA_AV_FEAT features,
  *
  ******************************************************************************/
 void BTA_AvDisable(void) {
+  APPL_TRACE_ERROR("%s:", __func__);
   if (!bta_sys_is_register(BTA_ID_AV)) {
     APPL_TRACE_ERROR("BTA AV is already disabled, ignoring ...");
     return;
@@ -146,6 +147,7 @@ void BTA_AvDisable(void) {
 void BTA_AvRegister(tBTA_AV_CHNL chnl, const char* p_service_name,
                     uint8_t app_id, tBTA_AV_SINK_DATA_CBACK* p_sink_data_cback,
                     uint16_t service_uuid) {
+  APPL_TRACE_ERROR("%s: app id: %d", __func__, app_id);
   tBTA_AV_API_REG* p_buf =
       (tBTA_AV_API_REG*)osi_malloc(sizeof(tBTA_AV_API_REG));
 
@@ -172,6 +174,7 @@ void BTA_AvRegister(tBTA_AV_CHNL chnl, const char* p_service_name,
  *
  ******************************************************************************/
 void BTA_AvDeregister(tBTA_AV_HNDL hndl) {
+  APPL_TRACE_ERROR("%s hdl: %d:", __func__, hndl);
   BT_HDR* p_buf = (BT_HDR*)osi_malloc(sizeof(BT_HDR));
 
   p_buf->layer_specific = hndl;
