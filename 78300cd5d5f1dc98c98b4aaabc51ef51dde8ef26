@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "562589d7_0e3fd4bc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2644
+      },
+      "writtenOn": "2022-09-09T13:32:35Z",
+      "side": 1,
+      "message": "Entire Q_asb_2022-09 builds and works fine on Surnia and Marlin.",
+      "revId": "78300cd5d5f1dc98c98b4aaabc51ef51dde8ef26",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
