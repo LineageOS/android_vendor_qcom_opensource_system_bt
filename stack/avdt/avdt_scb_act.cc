@@ -40,6 +40,7 @@
 #include "btu.h"
 #include "btif/include/btif_av.h"
 #include "log/log.h"
+#include "osi/include/log.h"
 #include "osi/include/osi.h"
 #include "stack/include/a2dp_sbc_constants.h"
 
@@ -1200,6 +1201,11 @@ void avdt_scb_hdl_write_req(tAVDT_SCB* p_scb, tAVDT_SCB_EVT* p_data) {
   /* Build a media packet, and add an RTP header if required. */
   if (add_rtp_header) {
     AVDT_TRACE_DEBUG("%s:add rtp header",__func__);
+    if (p_data->apiwrite.p_buf->offset < AVDT_MEDIA_HDR_SIZE) {
+      android_errorWriteWithInfoLog(0x534e4554, "242535997", -1, NULL, 0);
+      return;
+    }
+
     ssrc = avdt_scb_gen_ssrc(p_scb);
 
     p_data->apiwrite.p_buf->len += AVDT_MEDIA_HDR_SIZE;
