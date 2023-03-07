@@ -215,7 +215,11 @@ static rfc_slot_t* alloc_rfc_slot(const RawAddress* addr, const char* name,
   }
 
   // Increment slot id and make sure we don't use id=0.
-  if (++rfc_slot_id == 0) rfc_slot_id = 1;
+  if (UINT32_MAX == rfc_slot_id) {
+    rfc_slot_id = 1;
+  } else {
+    ++rfc_slot_id;
+  }
 
   slot->fd = fds[0];
   slot->app_fd = fds[1];
