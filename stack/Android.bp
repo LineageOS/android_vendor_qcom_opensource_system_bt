@@ -187,6 +187,7 @@ cc_library_static {
     shared_libs: [
         "libcutils",
          "liblog",
+         "libcrypto",
     ],
     required: [
         "libldacBT_enc",
@@ -253,7 +254,8 @@ cc_test {
     ],
     shared_libs: [
         "libcutils",
-		"liblog"
+         "liblog"
+         "libcrypto",
     ],
     static_libs: [
         "liblog",
