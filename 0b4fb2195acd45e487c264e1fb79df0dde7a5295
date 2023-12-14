@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7dd199fd_334cdeb1",
+        "filename": "stack/Android.bp",
+        "patchSetId": 2
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 31655
+      },
+      "writtenOn": "2023-12-14T15:15:23Z",
+      "side": 1,
+      "message": "missing a comma, compilation fails because of it",
+      "range": {
+        "startLine": 257,
+        "startChar": 16,
+        "endLine": 257,
+        "endChar": 17
+      },
+      "revId": "0b4fb2195acd45e487c264e1fb79df0dde7a5295",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
