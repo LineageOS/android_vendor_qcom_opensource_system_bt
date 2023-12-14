@@ -254,7 +254,7 @@ cc_test {
     ],
     shared_libs: [
         "libcutils",
-         "liblog"
+         "liblog",
          "libcrypto",
     ],
     static_libs: [
