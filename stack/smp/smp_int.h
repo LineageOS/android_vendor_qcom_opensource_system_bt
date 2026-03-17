@@ -337,6 +337,11 @@ typedef struct {
   uint8_t cert_failure; /*failure case for certification */
   alarm_t* delayed_auth_timer_ent;
   uint8_t cert_disable_h7_support;
+
+  struct {
+    bool approved;   // User has approved the pairing
+    bool confirmed;  // Remote device has confirmed the passkey
+  } passkey_display_state;
 } tSMP_CB;
 
 /* Server Action functions are of this type */
